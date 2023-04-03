@@ -118,7 +118,7 @@ def show_flights():
         else:
             put_text((Flights.display(i))).style('border-bottom-style: solid; border-width: 1px;padding-right: 30px')
 
-put_file(updatedfile, "air report")
+#put_file(updatedfile, "air report")
 show_date()
 show_time()
 show_flights()
