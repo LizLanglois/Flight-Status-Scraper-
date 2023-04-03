@@ -1,20 +1,22 @@
+import pywebio.output
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
-from pywebio.output import put_text, put_image, use_scope
+from pywebio.output import put_text, put_image, use_scope, put_file
 from datetime import datetime
 from pywebio.input import *
 import time
 
 put_image(open('logo2.PNG', 'rb').read())
 
-answer = radio("Which date would you like to check?", options=['25FEB', '26FEB', '27FEB'])
+answer = radio("Which date would you like to check?", options=['01APR', '02APR', '03APR'])
 date = answer[:2]
 month = answer[-3:]
 filename = answer+".csv"
+updatedfile = answer+"updated.csv"
 
 num_month = ""
 
@@ -45,6 +47,7 @@ else:
 
 
 class Flights:
+
     def __init__(self, airline, flightnum, origin, destination, dtime, atime, update='checking'):
         self.airline = airline
         self.flightnum = flightnum
@@ -74,7 +77,6 @@ class Flights:
 
     def check(self):
         self.update = self.status()
-        new_status.append(self.update)
 
     def display(self):
         return f"\t{self.airline} \t {self.flightnum:04} \t {self.origin: >8}  {self.destination: >8}\t\t {self.dtime: >12} \t {self.atime: >12} \t\t  {self.update}"
@@ -84,14 +86,14 @@ df = pd.read_csv(filename, header=None)
 print(df)
 flts = df.values.tolist()
 flight_instances = []
-new_status = []
 
 for f in flts:
     flight_instances.append(Flights(*f))
 
 
-#df['Status'] = new_status
-#print(df)
+df['Status'] = "checking"
+print(df)
+
 @use_scope('DATE')
 def show_date():
     put_text('Showing flights for ', answer)
@@ -110,26 +112,33 @@ def show_time2():
 @use_scope('FLIGHTS', clear=True)
 def show_flights():
     for i in flight_instances:
-        put_text((Flights.display(i))).style('border-bottom-style: solid; border-width: 1px;padding-right: 30px')
+        x = i.update
+        if x[0:7] == 'Arrived':
+            pass
+        else:
+            put_text((Flights.display(i))).style('border-bottom-style: solid; border-width: 1px;padding-right: 30px')
 
-
+put_file(updatedfile, "air report")
 show_date()
 show_time()
 show_flights()
 
+
 count = 0
 while True:
     for i in flight_instances:
-        Flights.check(i)
+        x = i.update
+        if x[0:7] == 'Arrived':
+            pass
+        else:
+            Flights.check(i)
+            print(Flights.display(i))
+
     show_flights()
     show_time2()
 
-    #background-color: #ddd'
-    #color: navy
-    #border-color: #ddd
-    #font-size: 20px
     count += 1
     time.sleep(6)
 
-    if count == 3:
+    if count == 13:
         break
