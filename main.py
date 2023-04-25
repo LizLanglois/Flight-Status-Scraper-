@@ -1,4 +1,3 @@
-import pywebio.output
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -9,14 +8,17 @@ from pywebio.output import put_text, put_image, use_scope, put_file
 from datetime import datetime
 from pywebio.input import *
 import time
+import csv
 
+#logo for GUI
 put_image(open('logo2.PNG', 'rb').read())
 
-answer = radio("Which date would you like to check?", options=['01APR', '02APR', '03APR'])
+#menu for user input to select date to check
+answer = radio("Which date would you like to check?", options=['23APR', '24APR', '25APR'])
 date = answer[:2]
 month = answer[-3:]
 filename = answer+".csv"
-updatedfile = answer+"updated.csv"
+csv_file_path = answer+"updated.csv"
 
 num_month = ""
 
@@ -56,10 +58,10 @@ class Flights:
         self.dtime = dtime
         self.atime = atime
         self.update = update
-
+    #set url to check
     def set_url(self):
         return f"https://www.flightstats.com/v2/flight-tracker/{self.airline}/{self.flightnum}?year=2023&month={num_month}&date={date}"
-
+    #check flight status
     def status(self):
         options = Options()
         options.headless = True
@@ -77,16 +79,21 @@ class Flights:
 
     def check(self):
         self.update = self.status()
-
+    #display for updated flight info
     def display(self):
         return f"\t{self.airline} \t {self.flightnum:04} \t {self.origin: >8}  {self.destination: >8}\t\t {self.dtime: >12} \t {self.atime: >12} \t\t  {self.update}"
+    #write status to csv file
+    def update_csv_file(flts, csv_file_path):
+        with open(csv_file_path, mode='w', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            for i in flight_instances:
+                writer.writerow([i.airline, i.flightnum, i.origin, i.destination, i.dtime, i.atime, i.update])
 
-
+#read original air report
 df = pd.read_csv(filename, header=None)
-print(df)
 flts = df.values.tolist()
 flight_instances = []
-
+#create objects for each line in air report
 for f in flts:
     flight_instances.append(Flights(*f))
 
@@ -94,21 +101,22 @@ for f in flts:
 df['Status'] = "checking"
 print(df)
 
+#date scope for GUI
 @use_scope('DATE')
 def show_date():
     put_text('Showing flights for ', answer)
 
-
+#original time scope for GUI
 @use_scope('TIME', clear=True)
 def show_time():
     put_text('please wait while we gather flight status information')
 
-
+#subsequent time scope for GUI after status updates
 @use_scope('TIME', clear=True)
 def show_time2():
     put_text('last updated:', datetime.now().isoformat(timespec='minutes', sep=' '))
 
-
+#flight display for GUI
 @use_scope('FLIGHTS', clear=True)
 def show_flights():
     for i in flight_instances:
@@ -118,7 +126,12 @@ def show_flights():
         else:
             put_text((Flights.display(i))).style('border-bottom-style: solid; border-width: 1px;padding-right: 30px')
 
-#put_file(updatedfile, "air report")
+#updated csv link for GUI
+@use_scope('link', clear=True)
+def show_link():
+    content = open(csv_file_path, 'rb').read()
+    put_file('updated_air.csv', content)
+
 show_date()
 show_time()
 show_flights()
@@ -134,11 +147,14 @@ while True:
             Flights.check(i)
             print(Flights.display(i))
 
+    Flights.update_csv_file(flts, csv_file_path)
+
     show_flights()
     show_time2()
+    show_link()
 
     count += 1
     time.sleep(6)
 
-    if count == 13:
+    if count == 25:
         break
